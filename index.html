@@ -7,171 +7,305 @@
 <title>Railway 3D</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#91cbe9;font-family:Arial,sans-serif;touch-action:none}
-canvas{display:block}
-#hud{position:fixed;inset:0;pointer-events:none;color:white;text-shadow:0 2px 4px #000;font-weight:bold}
-#title,#hint,#look{position:absolute;background:#111b;border-radius:9px;padding:9px}
-#title{top:12px;left:12px}
-#hint{top:56px;left:12px;font-size:12px}
-#look{top:12px;right:12px;font-size:11px}
-#joy{position:absolute;left:18px;bottom:22px;width:124px;height:124px;border-radius:50%;background:#ffffff35;border:2px solid #ffffff9a;pointer-events:auto}
-#knob{position:absolute;width:48px;height:48px;left:36px;top:36px;border-radius:50%;background:#ffffffc9;border:2px solid white}
-#buttons{position:absolute;right:10px;bottom:16px;display:flex;flex-direction:column;gap:7px;pointer-events:auto}
-button{background:#171c22e8;color:white;border:1px solid #ffffff8a;border-radius:11px;padding:12px 10px;font-weight:bold;font-size:12px;min-width:112px;touch-action:none}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8ac9ef;font-family:Arial,sans-serif;touch-action:none}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+#hud{position:fixed;inset:0;pointer-events:none;color:white}
+#top{position:absolute;top:12px;left:12px;background:#101820cc;padding:10px 13px;border-radius:12px;font-size:14px}
+#hint{position:absolute;top:65px;left:12px;right:12px;text-align:center;font-size:13px;text-shadow:0 2px 4px #000}
+button{border:1px solid #ffffff66;background:#18242be8;color:white;border-radius:13px;padding:13px 15px;font-size:14px;font-weight:bold;pointer-events:auto;touch-action:none}
+#actions{position:absolute;right:12px;bottom:22px;display:flex;flex-direction:column;gap:9px;align-items:flex-end}
+#mainBtn{background:#e5a51b;color:#151515}
+#boomBtns{display:flex;gap:6px}
+#stick{position:absolute;left:20px;bottom:28px;width:116px;height:116px;border-radius:50%;background:#ffffff30;border:2px solid #ffffff88;pointer-events:auto;touch-action:none}
+#knob{position:absolute;width:48px;height:48px;left:32px;top:32px;border-radius:50%;background:#ffffffbd;border:2px solid white}
+#cross{position:absolute;left:50%;top:50%;width:14px;height:14px;transform:translate(-50%,-50%);border:1px solid #ffffffa0;border-radius:50%}
+#footer{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);white-space:nowrap;font-size:11px;color:#ffffffc9}
 </style>
 </head>
 <body>
 <div id="hud">
-<div id="title">🚂 RAILWAY 3D</div>
-<div id="hint">Джойстик — движение<br>Веди пальцем по экрану — обзор</div>
-<div id="look">КАБИНА ЭКСКАВАТОРА</div>
-<div id="joy"><div id="knob"></div></div>
-<div id="buttons">
-<button id="up">⬆ Поднять стрелу</button>
-<button id="down">⬇ Опустить стрелу</button>
-<button id="open">🪣 Открыть ковш</button>
-<button id="close">🪣 Закрыть ковш</button>
-</div>
+ <div id="top">🚧 RAILWAY 3D<br><span id="mode">Режим: багр</span></div>
+ <div id="hint">Загружаем железную дорогу…</div>
+ <div id="cross"></div>
+ <div id="stick"><div id="knob"></div></div>
+ <div id="actions">
+  <button id="mainBtn">🚶 ВЫЙТИ</button>
+  <div id="boomBtns">
+   <button id="leftBtn">↶ Поворот</button>
+   <button id="upBtn">⬆ Ковш</button>
+   <button id="downBtn">⬇ Ковш</button>
+  </div>
+ </div>
+ <div id="footer">Джойстик — движение · Води пальцем справа — обзор</div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script>
 (function(){
 const hint=document.getElementById('hint');
 if(!window.THREE){
-hint.textContent='Ошибка: не загрузилась 3D-библиотека. Проверь интернет.';
-return;
+ hint.textContent='Нет 3D-библиотеки. Проверь интернет и обнови страницу.';
+ return;
 }
 try{
+const THREE=window.THREE;
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x91cbe9);
-scene.fog=new THREE.Fog(0x91cbe9,45,160);
-const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,250);
-const renderer=new THREE.WebGLRenderer({antialias:true});
+scene.background=new THREE.Color(0x8bc9f0);
+scene.fog=new THREE.Fog(0x8bc9f0,45,180);
+
+const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,400);
+const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'low-power'});
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
 renderer.setSize(innerWidth,innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 document.body.insertBefore(renderer.domElement,document.body.firstChild);
-scene.add(new THREE.HemisphereLight(0xffffff,0x66704e,2));
-const sun=new THREE.DirectionalLight(0xffffff,2);
-sun.position.set(-15,30,12);scene.add(sun);
-const mat=c=>new THREE.MeshStandardMaterial({color:c,roughness:.8});
-const grass=mat(0x50783c),treeMat=mat(0x28512d),stone=mat(0x77766e),railMat=mat(0xb7bec2),sleeperMat=mat(0x59432e),yellow=mat(0xf0b800),black=mat(0x292d30),steel=mat(0x777f83);
-const glass=new THREE.MeshStandardMaterial({color:0x72cbea,transparent:true,opacity:.22,roughness:.15,side:THREE.DoubleSide});
-function box(p,x,y,z,sx,sy,sz,m){
-const o=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),m);
-o.position.set(x,y,z);p.add(o);return o;
+
+scene.add(new THREE.HemisphereLight(0xdff2ff,0x65604b,2));
+const sun=new THREE.DirectionalLight(0xfff1cf,2.2);
+sun.position.set(-15,30,-12);scene.add(sun);
+
+const mat=(color,roughness=.9)=>new THREE.MeshStandardMaterial({color,roughness});
+const green=mat(0x577a42),dark=mat(0x252a2b),steel=mat(0x777f82);
+const wood=mat(0x65503b),yellow=mat(0xf0b51b),black=mat(0x242728);
+const glass=new THREE.MeshBasicMaterial({color:0x8ed6ed,transparent:true,opacity:.24,side:THREE.DoubleSide,depthWrite:false});
+function cube(parent,x,y,z,w,h,d,material){
+ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+ m.position.set(x,y,z);parent.add(m);return m;
 }
-function beam(p,a,b,r,m){
-const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b);
-const d=B.clone().sub(A);
-const o=new THREE.Mesh(new THREE.CylinderGeometry(r*.8,r,d.length(),10),m);
-o.position.copy(A.clone().add(B).multiplyScalar(.5));
-o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());
-p.add(o);return o;
+function cylinder(parent,x,y,z,r1,r2,h,material,segments=12){
+ const m=new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,segments),material);
+ m.position.set(x,y,z);parent.add(m);return m;
 }
-box(scene,0,-.35,-35,100,.5,180,grass);
-box(scene,0,-.03,-20,4.5,.18,150,stone);
-for(let z=50;z>-110;z-=1.3)box(scene,0,.07,z,3.1,.14,.24,sleeperMat);
-for(const x of [-.95,.95])box(scene,x,.18,-20,.18,.22,155,railMat);
-const treeGeo=new THREE.ConeGeometry(1.4,4,7);
-const trunkGeo=new THREE.CylinderGeometry(.15,.23,1.7,7);
-for(let side of [-1,1]){
-for(let z=-100;z<50;z+=5){
-let x=side*(7+Math.sin(z*.15)*2);
-let trunk=new THREE.Mesh(trunkGeo,mat(0x60472d));
-trunk.position.set(x,.8,z);scene.add(trunk);
-let crown=new THREE.Mesh(treeGeo,treeMat);
-crown.position.set(x,3.4,z);scene.add(crown);
+function ball(parent,x,y,z,r,material){
+ const m=new THREE.Mesh(new THREE.SphereGeometry(r,10,8),material);
+ m.position.set(x,y,z);parent.add(m);return m;
 }
+
+// Земля и железнодорожное полотно
+cube(scene,0,-.35,55,100,.5,300,green);
+cube(scene,0,-.08,55,5,.18,300,mat(0x77766b));
+for(let z=-100;z<250;z+=1.35){
+ cube(scene,0,.03,z,3.1,.15,.25,wood);
 }
-const cab=new THREE.Group();scene.add(cab);
-box(cab,0,1.0,0,2.2,.55,2.35,yellow);
-box(cab,0,1.4,-.1,1.9,.12,1.7,black);
-box(cab,0,1.42,.82,1.65,.5,.06,glass);
-box(cab,0,1.42,-.92,1.65,.5,.06,glass);
-box(cab,-.95,1.42,-.05,.06,.45,1.5,glass);
-box(cab,.95,1.42,-.05,.06,.45,1.5,glass);
-for(const x of [-.85,.85]){
-for(const z of [-.8,.8]){
-const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.38,.38,.25,16),black);
-wheel.rotation.z=Math.PI/2;wheel.position.set(x,.35,z);cab.add(wheel);
+for(const x of [-.72,.72]){
+ cube(scene,x,.13,55,.14,.22,300,steel);
+ cube(scene,x,.255,55,.055,.035,300,mat(0xc7cccd));
 }
+
+// Щебень
+for(let i=0;i<650;i++){
+ const x=(Math.random()-.5)*4.4;
+ const z=-40+Math.random()*220;
+ const rock=new THREE.Mesh(
+  new THREE.DodecahedronGeometry(.08+Math.random()*.12,0),
+  mat([0x797a73,0x8b8980,0x666960][i%3])
+ );
+ rock.position.set(x,.08,z);
+ rock.rotation.set(Math.random(),Math.random(),Math.random());
+ scene.add(rock);
 }
-box(cab,0,.72,-.1,1.2,.1,1.2,black);
-box(cab,0,.96,-.55,.42,.55,.12,black);
+
+// Деревья вдоль путей
+for(let z=-35;z<220;z+=5){
+ for(const side of [-1,1]){
+  const x=side*(5+Math.random()*8);
+  const h=3+Math.random()*4;
+  cylinder(scene,x,h/2,z,.16,.23,h,wood,7);
+  const crown=new THREE.Mesh(
+   new THREE.ConeGeometry(1.2+Math.random(),h*.48,7),
+   mat([0x315b34,0x3d6a3b,0x496f3b][Math.floor(Math.random()*3)])
+  );
+  crown.position.set(x,h*.82,z);scene.add(crown);
+ }
+}
+
+// Желтый железнодорожный экскаватор
+const vehicle=new THREE.Group();scene.add(vehicle);
+cube(vehicle,0,.67,0,2.35,.48,2.8,yellow);
+cube(vehicle,0,.4,-.05,2.6,.28,3.1,black);
+for(const x of [-1.12,1.12]){
+ for(const z of [-.85,.8]){
+  const wheel=cylinder(vehicle,x,.4,z,.42,.42,.25,black,14);
+  wheel.rotation.z=Math.PI/2;
+  const hub=cylinder(vehicle,x*1.01,.4,z,.19,.19,.27,steel,12);
+  hub.rotation.z=Math.PI/2;
+ }
+}
+cube(vehicle,0,1.35,-.35,1.5,1.15,1.35,yellow);
+// Кабина: стекла и стойки, без глухой передней стены
+cube(vehicle,0,1.92,-.35,1.62,.12,1.48,black);
+cube(vehicle,-.76,1.38,-.35,.09,.95,1.45,black);
+cube(vehicle,.76,1.38,-.35,.09,.95,1.45,black);
+cube(vehicle,0,1.42,-1.06,1.42,.85,.035,glass);
+cube(vehicle,0,1.42,.36,1.42,.85,.035,glass);
+cube(vehicle,-.01,1.42,.39,.045,.88,.06,black);
+cube(vehicle,-.79,1.42,-.35,.035,.82,1.3,glass);
+cube(vehicle,.79,1.42,-.35,.035,.82,1.3,glass);
+cube(vehicle,0,.9,-.35,1.4,.1,1.4,black);
+
+// Стрела и ковш
 const boomPivot=new THREE.Group();
-boomPivot.position.set(0,1.35,.55);cab.add(boomPivot);
-beam(boomPivot,[0,0,0],[0,.22,1.15],.18,yellow);
-beam(boomPivot,[0,.22,1.15],[0,-.1,2.05],.14,yellow);
-beam(boomPivot,[0,.12,.55],[0,.4,1.5],.045,steel);
-const stick=new THREE.Group();stick.position.set(0,-.1,2.05);boomPivot.add(stick);
-beam(stick,[0,0,0],[0,-.18,.85],.12,yellow);
-beam(stick,[0,.1,.05],[0,.22,.78],.04,steel);
-const bucket=new THREE.Group();bucket.position.set(0,-.18,.83);stick.add(bucket);
-box(bucket,0,-.12,.12,.42,.26,.38,steel);
-beam(bucket,[-.18,0,0],[-.18,-.28,.25],.04,steel);
-beam(bucket,[.18,0,0],[.18,-.28,.25],.04,steel);
-camera.position.set(0,1.35,-.55);
-cab.add(camera);
-let yaw=Math.PI,pitch=-.06,joyX=0,joyY=0;
-let boomAngle=0,bucketAngle=0;
-const joy=document.getElementById('joy'),knob=document.getElementById('knob');
-function setJoy(e){
-const r=joy.getBoundingClientRect();
-const dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);
-const len=Math.hypot(dx,dy),k=Math.min(1,39/Math.max(1,len));
-joyX=dx*k/39;joyY=dy*k/39;
-knob.style.left=(36+joyX*39)+'px';knob.style.top=(36+joyY*39)+'px';
+boomPivot.position.set(0,1.08,.45);vehicle.add(boomPivot);
+const boom=cube(boomPivot,0,.0,.85,.32,.32,1.9,yellow);
+boom.rotation.x=-.34;
+const stickPivot=new THREE.Group();
+stickPivot.position.set(0,-.25,1.65);boomPivot.add(stickPivot);
+const stick=cube(stickPivot,0,-.05,.7,.22,.22,1.5,yellow);
+stick.rotation.x=.15;
+const bucket=new THREE.Group();
+bucket.position.set(0,-.24,1.42);stickPivot.add(bucket);
+cube(bucket,0,-.1,.05,.48,.28,.4,black);
+cube(bucket,0,-.25,.19,.42,.12,.32,steel);
+for(let i=0;i<3;i++)cube(bucket,-.14+i*.14,-.34,.34,.07,.18,.1,steel);
+
+// Игрок
+const player={x:2.7,y:1.65,z:-1.2};
+let mode='vehicle';
+let yaw=Math.PI,pitch=-.04;
+let joystickX=0,joystickY=0;
+let boomTurn=0,boomLift=0;
+let lookPointer=null,lastX=0,lastY=0;
+const keys={};
+let lastTime=performance.now();
+
+function updateCamera(){
+ if(mode==='vehicle'){
+  camera.position.set(player.x,player.y,player.z);
+  camera.rotation.order='YXZ';
+  camera.rotation.set(pitch,yaw,0);
+ }else{
+  camera.position.set(player.x,player.y,player.z);
+  camera.rotation.order='YXZ';
+  camera.rotation.set(pitch,yaw,0);
+ }
 }
-joy.addEventListener('pointerdown',e=>{joy.setPointerCapture(e.pointerId);setJoy(e)});
-joy.addEventListener('pointermove',e=>{if(e.buttons)setJoy(e)});
-function resetJoy(){joyX=0;joyY=0;knob.style.left='36px';knob.style.top='36px'}
-joy.addEventListener('pointerup',resetJoy);
-joy.addEventListener('pointercancel',resetJoy);
-function hold(id,fn){
-const b=document.getElementById(id);let timer;
-const start=e=>{e.preventDefault();if(timer)return;fn();timer=setInterval(fn,50)};
-const stop=()=>{clearInterval(timer);timer=null};
-b.addEventListener('pointerdown',start);
-['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,stop));
+function setMode(next){
+ mode=next;
+ document.getElementById('mode').textContent=next==='vehicle'?'Режим: багр':'Режим: пешком';
+ document.getElementById('mainBtn').textContent=next==='vehicle'?'🚶 ВЫЙТИ':'🚜 СЕСТЬ В БАГР';
+ document.getElementById('boomBtns').style.display=next==='vehicle'?'flex':'none';
+ hint.textContent=next==='vehicle'?'Ты в кабине. Нажми «Выйти», чтобы ходить по путям.':'Ты вышел из кабины. Подойди к багру и нажми «Сесть».';
 }
-hold('up',()=>boomAngle=Math.min(.8,boomAngle+.025));
-hold('down',()=>boomAngle=Math.max(-.65,boomAngle-.025));
-hold('open',()=>bucketAngle=Math.min(.9,bucketAngle+.035));
-hold('close',()=>bucketAngle=Math.max(-.7,bucketAngle-.035));
-let lookId=null,lastX=0,lastY=0;
+document.getElementById('mainBtn').addEventListener('pointerdown',e=>{
+ e.preventDefault();
+ if(mode==='vehicle'){
+  player.x=vehicle.position.x+2.8;
+  player.z=vehicle.position.z-.2;
+  yaw=Math.PI;pitch=0;
+  setMode('foot');
+ }else{
+  const dist=Math.hypot(player.x-vehicle.position.x,player.z-vehicle.position.z);
+  if(dist<6){
+   player.x=vehicle.position.x;
+   player.z=vehicle.position.z-1.15;
+   setMode('vehicle');
+  }else{
+   hint.textContent='Подойди ближе к жёлтому багру, чтобы сесть.';
+  }
+ }
+});
+document.getElementById('leftBtn').addEventListener('pointerdown',e=>{
+ e.preventDefault();if(mode==='vehicle')boomTurn-=.13;
+});
+document.getElementById('upBtn').addEventListener('pointerdown',e=>{
+ e.preventDefault();if(mode==='vehicle')boomLift=Math.min(.8,boomLift+.12);
+});
+document.getElementById('downBtn').addEventListener('pointerdown',e=>{
+ e.preventDefault();if(mode==='vehicle')boomLift=Math.max(-.6,boomLift-.12);
+});
+
+// Сенсорный джойстик
+const stickPad=document.getElementById('stick');
+const knob=document.getElementById('knob');
+let stickId=null;
+function moveStick(e){
+ const r=stickPad.getBoundingClientRect();
+ let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);
+ const max=34,len=Math.hypot(dx,dy);
+ if(len>max){dx=dx/len*max;dy=dy/len*max;}
+ joystickX=dx/max;joystickY=dy/max;
+ knob.style.transform=`translate(${dx}px,${dy}px)`;
+}
+stickPad.addEventListener('pointerdown',e=>{
+ e.preventDefault();stickId=e.pointerId;stickPad.setPointerCapture(e.pointerId);moveStick(e);
+});
+stickPad.addEventListener('pointermove',e=>{if(e.pointerId===stickId)moveStick(e)});
+function releaseStick(e){
+ if(e.pointerId!==stickId)return;
+ stickId=null;joystickX=0;joystickY=0;knob.style.transform='';
+}
+stickPad.addEventListener('pointerup',releaseStick);
+stickPad.addEventListener('pointercancel',releaseStick);
+
+// Поворот обзора пальцем справа
 renderer.domElement.addEventListener('pointerdown',e=>{
-if(e.clientX<innerWidth*.35||e.clientX>innerWidth*.72)return;
-lookId=e.pointerId;lastX=e.clientX;lastY=e.clientY;
-renderer.domElement.setPointerCapture(e.pointerId);
+ if(e.clientX<innerWidth*.36)return;
+ lookPointer=e.pointerId;lastX=e.clientX;lastY=e.clientY;
+ renderer.domElement.setPointerCapture(e.pointerId);
 });
 renderer.domElement.addEventListener('pointermove',e=>{
-if(lookId!==e.pointerId)return;
-yaw-=(e.clientX-lastX)*.006;
-pitch=Math.max(-.65,Math.min(.5,pitch-(e.clientY-lastY)*.004));
-lastX=e.clientX;lastY=e.clientY;
+ if(e.pointerId!==lookPointer)return;
+ const dx=e.clientX-lastX,dy=e.clientY-lastY;
+ lastX=e.clientX;lastY=e.clientY;
+ yaw-=dx*.006;pitch-=dy*.005;
+ pitch=Math.max(-1.15,Math.min(1.15,pitch));
 });
-renderer.domElement.addEventListener('pointerup',e=>{if(lookId===e.pointerId)lookId=null});
-function frame(){
-requestAnimationFrame(frame);
-cab.rotation.y-=joyX*.018;
-cab.position.x=Math.max(-4,Math.min(4,cab.position.x+Math.sin(cab.rotation.y)*(-joyY)*.06));
-cab.position.z+=Math.cos(cab.rotation.y)*(-joyY)*.06;
-boomPivot.rotation.x=boomAngle;
-stick.rotation.x=bucketAngle*.5;
-bucket.rotation.x=bucketAngle;
-camera.rotation.order='YXZ';
-camera.rotation.set(pitch,yaw,0);
-renderer.render(scene,camera);
+function endLook(e){if(e.pointerId===lookPointer)lookPointer=null;}
+renderer.domElement.addEventListener('pointerup',endLook);
+renderer.domElement.addEventListener('pointercancel',endLook);
+
+addEventListener('keydown',e=>{
+ keys[e.key.toLowerCase()]=true;
+ if(e.key.toLowerCase()==='e'){
+  document.getElementById('mainBtn').dispatchEvent(new PointerEvent('pointerdown'));
+ }
+});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+// Солнце и облака
+for(let i=0;i<9;i++){
+ const cloud=new THREE.Group();
+ for(let j=0;j<4;j++)ball(cloud,j*.65,.1*(j%2),0,.55,mat(0xf5f8fa));
+ cloud.position.set(-25+i*7,13+(i%3)*2,-15-i*8);
+ scene.add(cloud);
 }
-frame();
+
+// Обновление
+function animate(now){
+ requestAnimationFrame(animate);
+ const dt=Math.min((now-lastTime)/1000,.04);lastTime=now;
+
+ if(mode==='foot'){
+  const forward=-(joystickY||0);
+  const side=joystickX||0;
+  const f=forward+(keys.w?1:0)-(keys.s?1:0);
+  const s=side+(keys.d?1:0)-(keys.a?1:0);
+  const speed=5*dt;
+  player.x+=(Math.cos(yaw)*s+Math.sin(yaw)*f)*speed;
+  player.z+=(Math.sin(yaw)*s-Math.cos(yaw)*f)*speed;
+  player.x=Math.max(-20,Math.min(20,player.x));
+  player.y=1.65;
+ }else{
+  vehicle.position.x+=joystickX*dt*2;
+  vehicle.position.z+=joystickY*dt*2;
+  player.x=vehicle.position.x;
+  player.z=vehicle.position.z-1.15;
+  boomPivot.rotation.y=boomTurn;
+  boomPivot.rotation.x=-.34+boomLift;
+ }
+ updateCamera();
+ renderer.render(scene,camera);
+}
 addEventListener('resize',()=>{
-camera.aspect=innerWidth/innerHeight;
-camera.updateProjectionMatrix();
-renderer.setSize(innerWidth,innerHeight);
+ camera.aspect=innerWidth/innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight);
 });
+setMode('vehicle');
+hint.textContent='Мир загружен. Выйди из багра, чтобы ходить по путям.';
+requestAnimationFrame(animate);
 }catch(err){
-hint.textContent='Ошибка 3D: '+err.message;
+ hint.textContent='Ошибка 3D: '+err.message;
+ console.error(err);
 }
 })();
 </script>
