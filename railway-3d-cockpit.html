@@ -1,122 +1,565 @@
+
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#101820"><title>RAILWAY 3D</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#101820">
+<title>RAILWAY 3D — CABIN</title>
 <style>
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#9bc7e8;font-family:Arial,sans-serif}canvas{display:block}#hud{position:fixed;inset:0;pointer-events:none;color:white;text-shadow:0 2px 4px #000}#title{position:absolute;top:14px;left:14px;font-weight:900;letter-spacing:2px;font-size:17px}#hint{position:absolute;top:40px;left:14px;font-size:11px;opacity:.85}#controls,#right{display:none}button{touch-action:none;user-select:none}canvas{touch-action:none}#stickBase{position:absolute;left:24px;bottom:26px;width:126px;height:126px;border:2px solid #ffffff88;border-radius:50%;background:#10202c55;pointer-events:auto;display:block;touch-action:none;z-index:5}#stickKnob{position:absolute;left:39px;top:39px;width:44px;height:44px;border:2px solid #fff;background:#dce8ef66;border-radius:50%;pointer-events:none}#aimHint{position:absolute;right:18px;bottom:24px;font-size:10px;opacity:.65}#look{position:absolute;right:14px;top:15px;font-size:11px;background:#14212d88;padding:9px 11px;border-radius:10px}#cross{position:absolute;left:50%;top:50%;width:5px;height:5px;border-radius:50%;background:#fff;box-shadow:0 0 5px #000;transform:translate(-50%,-50%)}#vehicleBtn{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);display:none;pointer-events:auto;z-index:8;background:#e0a52d;color:#111;border:2px solid #fff;border-radius:12px;padding:13px 18px;font-weight:900;font-size:14px;white-space:nowrap}#vehicleStatus{position:absolute;top:70px;left:14px;padding:7px 10px;background:#101820aa;border-radius:8px;font-size:12px;display:none}
-@media (orientation:landscape){#rotatePrompt{display:none}}#rotatePrompt{position:fixed;inset:0;z-index:20;background:#101820;color:white;display:none;align-items:center;justify-content:center;text-align:center;font-weight:700;font-size:20px;padding:28px} @media (orientation:portrait){#rotatePrompt{display:flex}}#rotatePrompt span{display:block;font-size:42px;margin-bottom:14px;animation:turn 1.5s ease-in-out infinite alternate}@keyframes turn{to{transform:rotate(-90deg)}} </style></head><body><div id="rotatePrompt"><div><span>📱</span>Поверни телефон горизонтально<br><small style="font-size:13px;font-weight:400;opacity:.8">RAILWAY 3D удобнее играть в альбомном режиме</small></div></div>
-<div id="hud"><div id="title">RAILWAY 3D</div><div id="hint">Объёмные рельсы и шпалы · вид от первого лица</div><div id="look">Проводи пальцем по экрану, чтобы смотреть</div><div id="cross"></div><div id="vehicleStatus">В БАГРЕ · джойстик — ехать</div><button id="vehicleBtn">🚜 СЕСТЬ В БАГР</button><div id="controls"><button id="left">◀</button><button id="forward">▲</button><button id="back">▼</button><button id="rightbtn">▶</button></div><div id="right"><button id="turnL">↶</button><button id="turnR">↷</button></div><div id="stickBase"><div id="stickKnob"></div></div><div id="aimHint">Веди пальцем справа — поворачивай камеру</div></div>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script><script>
-(()=>{async function requestLandscape(){try{if(!document.fullscreenElement&&document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();}catch(e){}try{if(screen.orientation&&screen.orientation.lock)await screen.orientation.lock('landscape');}catch(e){}}document.addEventListener('pointerdown',requestLandscape,{once:true});const scene=new THREE.Scene();scene.background=new THREE.Color(0x9bc7e8);scene.fog=new THREE.Fog(0x9bc7e8,65,260);
-const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,500);camera.position.set(0,1.75,5);
-const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=false;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;document.body.appendChild(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xd8ecff,0x514a37,2.1));const sun=new THREE.DirectionalLight(0xfff1d1,3.2);sun.position.set(-30,55,20);sun.castShadow=false;scene.add(sun);
-const mat=(c,r=.85,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(700,700),mat(0x68734c));ground.rotation.x=-Math.PI/2;ground.position.y=-.12;ground.receiveShadow=false;scene.add(ground);
-// ballast bed: raised, broad gravel foundation with sloped shoulders
-const ballastMat=mat(0x77766d);const bedGeo=new THREE.BoxGeometry(5.4,.34,340);const bed=new THREE.Mesh(bedGeo,ballastMat);bed.position.set(0,.03,-155);bed.receiveShadow=false;bed.castShadow=false;scene.add(bed);
-// Gravel flecks batched into instanced meshes for smoother performance
-const gravelMat=[mat(0x98958a),mat(0x5f625e),mat(0xb1a99a)];
-const gravelGeo=new THREE.DodecahedronGeometry(1,0), gravelCounts=[600,600,600], gravelMeshes=[];
-for(let k=0;k<3;k++){const im=new THREE.InstancedMesh(gravelGeo,gravelMat[k],gravelCounts[k]);const dummy=new THREE.Object3D();for(let i=0;i<gravelCounts[k];i++){let z=-320+Math.random()*330,x=(Math.random()-.5)*5,sz=.035+Math.random()*.09;dummy.position.set(x,.23+Math.random()*.035,z);dummy.scale.setScalar(sz);dummy.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3);dummy.updateMatrix();im.setMatrixAt(i,dummy.matrix)}scene.add(im);gravelMeshes.push(im)}
-// Wooden sleepers batched into instanced meshes (3D boxes with visible thickness)
-const wood=mat(0x65452e),woodTop=mat(0x886344),woodDark=mat(0x493324);const sleeperCount=236;
-const sleeperMesh=new THREE.InstancedMesh(new THREE.BoxGeometry(3.05,.22,.34),wood,sleeperCount);const sleeperTopMesh=new THREE.InstancedMesh(new THREE.BoxGeometry(2.98,.018,.29),woodTop,sleeperCount);const grainMesh=new THREE.InstancedMesh(new THREE.BoxGeometry(.018,.008,.23),woodDark,sleeperCount*6);const dummy=new THREE.Object3D();let si=0,gi=0;for(let z=-320;z<15;z+=1.42){dummy.position.set(0,.31,z);dummy.rotation.set(0,0,0);dummy.scale.set(1,1,1);dummy.updateMatrix();sleeperMesh.setMatrixAt(si,dummy.matrix);dummy.position.set(0,.431,z);dummy.updateMatrix();sleeperTopMesh.setMatrixAt(si,dummy.matrix);si++;for(let x of [-1.1,-.65,-.2,.25,.7,1.12]){dummy.position.set(x,.444,z);dummy.updateMatrix();grainMesh.setMatrixAt(gi++,dummy.matrix)}}scene.add(sleeperMesh,sleeperTopMesh,grainMesh);
-// Two steel rails: rectangular foot, raised web, broad head; each part is solid 3D geometry
-const steel=mat(0x626b72,.27,.82),steelTop=mat(0xb7c0c5,.2,.88),steelSide=mat(0x414b52,.32,.75);for(const x of [-.76,.76]){let foot=new THREE.Mesh(new THREE.BoxGeometry(.19,.065,340),steelSide);foot.position.set(x,.49,-155);foot.castShadow=false;foot.receiveShadow=false;scene.add(foot);let web=new THREE.Mesh(new THREE.BoxGeometry(.105,.19,340),steel);web.position.set(x,.605,-155);web.castShadow=false;scene.add(web);let head=new THREE.Mesh(new THREE.BoxGeometry(.16,.085,340),steelTop);head.position.set(x,.742,-155);head.castShadow=false;head.receiveShadow=false;scene.add(head);}
-// Rail clips and bolts are instanced to reduce draw calls
-const boltMat=mat(0x292f32,.4,.6);const railFastenerCount=472;const clipMesh=new THREE.InstancedMesh(new THREE.BoxGeometry(.25,.035,.09),boltMat,railFastenerCount);const boltMesh=new THREE.InstancedMesh(new THREE.CylinderGeometry(.035,.035,.025,8),steelTop,railFastenerCount);let fi=0;for(let z=-320;z<15;z+=1.42)for(const x of [-.76,.76]){dummy.position.set(x,.54,z);dummy.rotation.set(0,0,0);dummy.scale.set(1,1,1);dummy.updateMatrix();clipMesh.setMatrixAt(fi,dummy.matrix);dummy.position.set(x,.565,z);dummy.rotation.x=Math.PI/2;dummy.updateMatrix();boltMesh.setMatrixAt(fi++,dummy.matrix);dummy.rotation.x=0}scene.add(clipMesh,boltMesh);
-// Forest built with instanced trunks and foliage for mobile-friendly FPS
-const trunkMat=mat(0x493625),leafMats=[mat(0x244b30),mat(0x315b37),mat(0x3b6840)];const treeCount=160;const trunkMesh=new THREE.InstancedMesh(new THREE.CylinderGeometry(.16,.28,1,7),trunkMat,treeCount);const foliage=leafMats.map(m=>new THREE.InstancedMesh(new THREE.ConeGeometry(1,1,7),m,treeCount*3));let ti=0,li=[0,0,0];for(let side of [-1,1])for(let i=0;i<80;i++){let z=-320+i*4.2+(Math.random()-.5)*1.1;let x=side*(5.5+Math.random()*13);let h=4+Math.random()*6;dummy.position.set(x,h*.14,z);dummy.scale.set(1,h*.28,1);dummy.rotation.set(0,0,0);dummy.updateMatrix();trunkMesh.setMatrixAt(ti++,dummy.matrix);for(let k=0;k<3;k++){let mi=(i+k)%3;dummy.position.set(x,h*.32+k*h*.19,z);dummy.scale.set(1.15+(2-k)*.22,h*.34,1.15+(2-k)*.22);dummy.updateMatrix();foliage[mi].setMatrixAt(li[mi]++,dummy.matrix)}}scene.add(trunkMesh,...foliage);
-// distant low hills, fixed in the world (not attached to camera)
-const hillMats=[mat(0x71876e),mat(0x80957a),mat(0x91a38a)];for(let i=0;i<18;i++){let hill=new THREE.Mesh(new THREE.SphereGeometry(1,16,10),hillMats[i%3]);hill.scale.set(10+Math.random()*14,5+Math.random()*8,12+Math.random()*18);hill.position.set((i%2?1:-1)*(22+Math.random()*35),hill.scale.y-1,-80-i*15);scene.add(hill)}
-const sunBall=new THREE.Mesh(new THREE.SphereGeometry(4,20,16),new THREE.MeshBasicMaterial({color:0xffe6a0}));sunBall.position.set(-55,42,-190);scene.add(sunBall);
-let yaw=0,pitch=0;camera.rotation.order='YXZ';function updateLook(){camera.rotation.set(pitch,yaw,0,'YXZ')}const keys={};addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true});addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
-let active=null;function bind(id,key){let b=document.getElementById(id);b.addEventListener('pointerdown',e=>{e.preventDefault();keys[key]=true;b.setPointerCapture(e.pointerId)});for(let ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>keys[key]=false)}bind('forward','w');bind('back','s');bind('left','a');bind('rightbtn','d');bind('turnL','q');bind('turnR','e');
-// Mobile controls: left virtual joystick moves, dragging anywhere on the right turns the view.
-const stickBase=document.getElementById('stickBase'),stickKnob=document.getElementById('stickKnob');let joyId=null,lookId=null,joyX=0,joyY=0,lastLookX=0,lastLookY=0;const joyRadius=42;function moveStick(e){const r=stickBase.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let dx=e.clientX-cx,dy=e.clientY-cy,d=Math.hypot(dx,dy);if(d>joyRadius){dx=dx/d*joyRadius;dy=dy/d*joyRadius}joyX=dx/joyRadius;joyY=dy/joyRadius;stickKnob.style.transform=`translate(${dx}px,${dy}px)`;}function resetStick(){joyId=null;joyX=joyY=0;stickKnob.style.transform='translate(0px,0px)'}
-stickBase.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();joyId=e.pointerId;stickBase.setPointerCapture(e.pointerId);moveStick(e)});stickBase.addEventListener('pointermove',e=>{if(e.pointerId===joyId){e.preventDefault();moveStick(e)}});for(const ev of ['pointerup','pointercancel','lostpointercapture'])stickBase.addEventListener(ev,e=>{if(e.pointerId===joyId)resetStick()});
-renderer.domElement.addEventListener('pointerdown',e=>{if(e.clientX>innerWidth*.38){lookId=e.pointerId;lastLookX=e.clientX;lastLookY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)}});renderer.domElement.addEventListener('pointermove',e=>{if(e.pointerId===lookId){e.preventDefault();yaw-=(e.clientX-lastLookX)*.0045;pitch-=(e.clientY-lastLookY)*.0035;pitch=Math.max(-1.1,Math.min(1.1,pitch));lastLookX=e.clientX;lastLookY=e.clientY;updateLook()}});for(const ev of ['pointerup','pointercancel','lostpointercapture'])renderer.domElement.addEventListener(ev,e=>{if(e.pointerId===lookId)lookId=null});
-// Detailed yellow Czech railway excavator: tracks, rollers, cab glazing, hydraulic boom and toothed bucket.
-const bagr=new THREE.Group();bagr.position.set(3.7,0,-7);bagr.scale.setScalar(1.25);scene.add(bagr);
-const yellow=mat(0xf2b51f,.48,.18),yellowDark=mat(0xb97810,.58,.22),rubber=mat(0x24282a,.94),trackMetal=mat(0x454b4d,.8,.28),glass=new THREE.MeshStandardMaterial({color:0x8ab7c5,roughness:.12,metalness:.12,transparent:true,opacity:.22,depthWrite:false}),glassLight=mat(0x7295a0,.22,.35),metal=mat(0x697278,.36,.72),steelDark=mat(0x353b3e,.52,.65),bucketMat=mat(0x777f82,.52,.72),lamp=mat(0xfff0bd,.25,.1),redLamp=mat(0xc52d20,.32,.2);
-function part(parent,geo,material,x,y,z,rx=0,ry=0,rz=0){const o=new THREE.Mesh(geo,material);o.position.set(x,y,z);o.rotation.set(rx,ry,rz);parent.add(o);return o;}
-function box(parent,x,y,z,sx,sy,sz,m,rx=0,ry=0,rz=0){return part(parent,new THREE.BoxGeometry(sx,sy,sz),m,x,y,z,rx,ry,rz)}
-function beam(parent,a,b,r1,r2,m){const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),d=new THREE.Vector3().subVectors(B,A);const o=part(parent,new THREE.CylinderGeometry(r2,r1,d.length(),10),m,...A.clone().add(B).multiplyScalar(.5).toArray());o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());return o;}
-// Wheeled railway excavator inspired by real CAT rail-road machines
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#9bc7e8;font-family:Arial,sans-serif}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+button{font-weight:900;border:1px solid #ffffff99;border-radius:12px;background:#17242ddd;color:white;padding:12px 14px;font-size:14px;touch-action:none;user-select:none}
+#hud{position:fixed;inset:0;pointer-events:none;color:white;text-shadow:0 2px 4px #000}
+#title{position:absolute;top:12px;left:12px;font-weight:900;letter-spacing:2px;font-size:16px}
+#status{position:absolute;top:38px;left:12px;font-size:11px;background:#101820aa;padding:6px 8px;border-radius:7px}
+#cross{position:absolute;left:50%;top:50%;width:5px;height:5px;background:white;border-radius:50%;transform:translate(-50%,-50%)}
+#stick{position:absolute;left:20px;bottom:22px;width:120px;height:120px;border:2px solid #ffffff99;border-radius:50%;background:#10202c66;pointer-events:auto;touch-action:none}
+#knob{position:absolute;left:36px;top:36px;width:44px;height:44px;border-radius:50%;border:2px solid white;background:#dce8ef77;pointer-events:none}
+#lookhint{position:absolute;right:12px;top:14px;font-size:10px;background:#101820aa;padding:8px;border-radius:8px}
+#enter{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);background:#e8ad28;color:#151515;white-space:nowrap;pointer-events:auto}
+#armControls{position:absolute;right:12px;bottom:20px;display:none;flex-direction:column;align-items:flex-end;gap:7px;pointer-events:auto}
+.controlrow{display:flex;gap:7px}
+#armControls button{min-width:58px;min-height:48px;padding:10px;font-size:18px;background:#17242de8}
+#armControls .label{font-size:10px;text-align:center;opacity:.9}
+#rotate{display:none;position:fixed;inset:0;background:#101820;color:white;z-index:50;align-items:center;justify-content:center;text-align:center;font-size:20px;font-weight:bold}
+#rotate span{font-size:40px;display:block;margin-bottom:12px}
+@media(orientation:portrait){#rotate{display:flex}}
+@media(orientation:landscape){#rotate{display:none}}
+</style>
+</head>
+<body>
+<div id="rotate"><div><span>📱</span>Поверни телефон горизонтально</div></div>
+<div id="hud">
+ <div id="title">RAILWAY 3D</div>
+ <div id="status">Пешком · найди экскаватор</div>
+ <div id="lookhint">Проводи пальцем справа, чтобы смотреть</div>
+ <div id="cross"></div>
+ <div id="stick"><div id="knob"></div></div>
+ <button id="enter">🚜 СЕСТЬ В ЭКСКАВАТОР</button>
+ <div id="armControls">
+  <div class="label">СТРЕЛА</div>
+  <div class="controlrow">
+   <button id="armUp">▲</button>
+   <button id="armDown">▼</button>
+  </div>
+  <div class="label">КОВШ</div>
+  <div class="controlrow">
+   <button id="bucketOpen">↗</button>
+   <button id="bucketClose">↙</button>
+  </div>
+  <div class="label">ПОВОРОТ СТРЕЛЫ</div>
+  <div class="controlrow">
+   <button id="boomLeft">◀</button>
+   <button id="boomRight">▶</button>
+  </div>
+ </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(()=>{
+'use strict';
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x9bc7e8);
+scene.fog=new THREE.Fog(0x9bc7e8,65,260);
+
+const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,500);
+camera.rotation.order='YXZ';
+camera.position.set(0,1.75,5);
+
+const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xd8ecff,0x514a37,2.1));
+const sun=new THREE.DirectionalLight(0xfff1d1,3);
+sun.position.set(-30,55,20);
+scene.add(sun);
+
+const mat=(c,r=.8,m=0)=>new THREE.MeshStandardMaterial({
+ color:c,roughness:r,metalness:m
+});
+const boxGeo=new THREE.BoxGeometry(1,1,1);
+
+function box(parent,x,y,z,sx,sy,sz,material){
+ const o=new THREE.Mesh(boxGeo,material);
+ o.position.set(x,y,z);
+ o.scale.set(sx,sy,sz);
+ parent.add(o);
+ return o;
+}
+function beam(parent,a,b,r1,r2,material){
+ const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b);
+ const d=new THREE.Vector3().subVectors(B,A);
+ const o=new THREE.Mesh(
+  new THREE.CylinderGeometry(r2,r1,d.length(),10),material
+ );
+ o.position.copy(A).add(B).multiplyScalar(.5);
+ o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());
+ parent.add(o);
+ return o;
+}
+function cylinder(parent,r1,r2,h,material,x,y,z,rz=0){
+ const o=new THREE.Mesh(
+  new THREE.CylinderGeometry(r1,r2,h,16),material
+ );
+ o.position.set(x,y,z);
+ o.rotation.z=rz;
+ parent.add(o);
+ return o;
+}
+
+// Ground
+const ground=new THREE.Mesh(
+ new THREE.PlaneGeometry(700,700),mat(0x68734c)
+);
+ground.rotation.x=-Math.PI/2;
+ground.position.y=-.15;
+scene.add(ground);
+
+// Railway ballast
+const bed=new THREE.Mesh(
+ new THREE.BoxGeometry(5.4,.34,340),mat(0x77766d)
+);
+bed.position.set(0,.03,-155);
+scene.add(bed);
+
+// Gravel
+const gravelMats=[
+ mat(0x98958a),mat(0x5f625e),mat(0xb1a99a)
+];
+const gravelGeo=new THREE.DodecahedronGeometry(1,0);
+for(let k=0;k<3;k++){
+ const im=new THREE.InstancedMesh(gravelGeo,gravelMats[k],400);
+ const d=new THREE.Object3D();
+ for(let i=0;i<400;i++){
+  d.position.set((Math.random()-.5)*5,.23,-320+Math.random()*330);
+  d.scale.setScalar(.035+Math.random()*.075);
+  d.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3);
+  d.updateMatrix();
+  im.setMatrixAt(i,d.matrix);
+ }
+ scene.add(im);
+}
+
+// Sleepers
+const wood=mat(0x65452e),woodTop=mat(0x886344);
+const sleeper=new THREE.InstancedMesh(
+ new THREE.BoxGeometry(3.05,.22,.34),wood,236
+);
+const tops=new THREE.InstancedMesh(
+ new THREE.BoxGeometry(2.98,.018,.29),woodTop,236
+);
+const d=new THREE.Object3D();
+let si=0;
+for(let z=-320;z<15;z+=1.42){
+ d.position.set(0,.31,z);
+ d.updateMatrix();sleeper.setMatrixAt(si,d.matrix);
+ d.position.set(0,.431,z);
+ d.updateMatrix();tops.setMatrixAt(si,d.matrix);
+ si++;
+}
+scene.add(sleeper,tops);
+
+// Steel rails
+const steel=mat(0x626b72,.27,.82);
+const steelTop=mat(0xb7c0c5,.2,.88);
+const steelSide=mat(0x414b52,.32,.75);
+for(const x of [-.76,.76]){
+ box(scene,x,.49,-155,.19,.065,340,steelSide);
+ box(scene,x,.605,-155,.105,.19,340,steel);
+ box(scene,x,.742,-155,.16,.085,340,steelTop);
+}
+const boltMat=mat(0x292f32,.4,.6);
+for(let z=-320;z<15;z+=1.42){
+ for(const x of [-.76,.76]){
+  box(scene,x,.54,z,.25,.035,.09,boltMat);
+ }
+}
+
+// Forest
+const trunkMat=mat(0x493625);
+const leafMats=[mat(0x244b30),mat(0x315b37),mat(0x3b6840)];
+for(const side of [-1,1]){
+ for(let i=0;i<80;i++){
+  const z=-320+i*4.2+(Math.random()-.5);
+  const x=side*(5.5+Math.random()*13);
+  const h=4+Math.random()*6;
+  cylinder(scene,.28,.16,h*.28,trunkMat,x,h*.14,z);
+  for(let k=0;k<3;k++){
+   const tree=new THREE.Mesh(
+    new THREE.ConeGeometry(1,1,7),leafMats[k]
+   );
+   tree.position.set(x,h*.32+k*h*.19,z);
+   tree.scale.set(1.5,h*.34,1.5);
+   scene.add(tree);
+  }
+ }
+}
+
+// Distant hills
+const hillMats=[mat(0x71876e),mat(0x80957a),mat(0x91a38a)];
+for(let i=0;i<18;i++){
+ const hill=new THREE.Mesh(
+  new THREE.SphereGeometry(1,16,10),hillMats[i%3]
+ );
+ hill.scale.set(10+Math.random()*14,5+Math.random()*8,12+Math.random()*18);
+ hill.position.set((i%2?1:-1)*(22+Math.random()*35),hill.scale.y-1,-80-i*15);
+ scene.add(hill);
+}
+
+// Excavator body
+const bagr=new THREE.Group();
+bagr.position.set(3.7,0,-7);
+bagr.scale.setScalar(1.25);
+scene.add(bagr);
+
+const yellow=mat(0xf2b51f,.48,.18);
+const yellowDark=mat(0xb97810,.58,.22);
+const rubber=mat(0x24282a,.94);
+const trackMetal=mat(0x454b4d,.8,.28);
+const glass=new THREE.MeshStandardMaterial({
+ color:0x8ab7c5,roughness:.12,metalness:.12,
+ transparent:true,opacity:.22,depthWrite:false
+});
+const metal=mat(0x697278,.36,.72);
+const steelDark=mat(0x353b3e,.52,.65);
+const bucketMat=mat(0x777f82,.52,.72);
+const lamp=mat(0xfff0bd,.25,.1);
+const redLamp=mat(0xc52d20,.32,.2);
+
 box(bagr,0,.48,0,1.72,.34,2.45,steelDark);
-// Two large road tyres on each side, with chunky rubber and layered steel hubs
+
+// Wheels
 for(const side of [-1,1]){
  const x=side*.91;
  for(const z of [-.67,.67]){
-   part(bagr,new THREE.CylinderGeometry(.405,.405,.29,24),rubber,x,.48,z,0,0,Math.PI/2);
-   part(bagr,new THREE.CylinderGeometry(.285,.285,.305,20),trackMetal,x+side*.018,.48,z,0,0,Math.PI/2);
-   part(bagr,new THREE.CylinderGeometry(.17,.17,.315,16),steelDark,x+side*.028,.48,z,0,0,Math.PI/2);
-   part(bagr,new THREE.CylinderGeometry(.09,.09,.325,12),metal,x+side*.038,.48,z,0,0,Math.PI/2);
-   for(let k=0;k<8;k++){const a=k*Math.PI/4;part(bagr,new THREE.CylinderGeometry(.018,.018,.33,6),steelDark,x+side*.045,.48+Math.sin(a)*.21,z+Math.cos(a)*.21,0,0,Math.PI/2);}
+  cylinder(bagr,.405,.405,.29,rubber,x,.48,z,Math.PI/2);
+  cylinder(bagr,.285,.285,.305,trackMetal,x+side*.018,.48,z,Math.PI/2);
+  cylinder(bagr,.17,.17,.315,steelDark,x+side*.028,.48,z,Math.PI/2);
+  cylinder(bagr,.09,.09,.325,metal,x+side*.038,.48,z,Math.PI/2);
  }
- // Yellow wheel arches and suspension blocks
  box(bagr,x,.88,0,.25,.12,1.75,yellowDark);
  box(bagr,x,.64,0,.28,.16,1.55,steelDark);
 }
-// Small rail-guide wheels at the front and rear sit directly over both rails
-for(const side of [-1,1])for(const z of [-1.08,1.08]){
- const x=side*.76;
- part(bagr,new THREE.CylinderGeometry(.205,.205,.13,20),steelDark,x,.25,z,0,0,Math.PI/2);
- part(bagr,new THREE.CylinderGeometry(.16,.16,.145,20),metal,x,.25,z,0,0,Math.PI/2);
- part(bagr,new THREE.CylinderGeometry(.055,.055,.16,12),steelDark,x,.25,z,0,0,Math.PI/2);
- // flanges give the rail rollers a recognizable railway profile
- part(bagr,new THREE.CylinderGeometry(.22,.22,.025,20),steelDark,x-side*.07,.25,z,0,0,Math.PI/2);
+
+// Railway guide wheels
+for(const side of [-1,1]){
+ for(const z of [-1.08,1.08]){
+  const x=side*.76;
+  cylinder(bagr,.205,.205,.13,steelDark,x,.25,z,Math.PI/2);
+  cylinder(bagr,.16,.16,.145,metal,x,.25,z,Math.PI/2);
+  cylinder(bagr,.22,.22,.025,steelDark,x-side*.07,.25,z,Math.PI/2);
+ }
 }
 
-// Sleek upper rotating deck and counterweight
-box(bagr,0,.91,.05,1.62,.42,1.72,yellow,0,0,0);
-box(bagr,0,1.08,-.61,1.42,.38,.55,yellowDark,0,0,0);
-box(bagr,0,1.20,-.72,1.24,.2,.5,yellow,0,0,0);
-// rear grille, exhaust stack, service details
-for(let i=0;i<5;i++)box(bagr,-.47+i*.23,.94,-.895,.12,.18,.025,steelDark);
-beam(bagr,[.49,1.0,-.55],[.49,1.35,-.58],.045,.045,steelDark);part(bagr,new THREE.CylinderGeometry(.07,.06,.08,10),metal,.49,1.36,-.58);
-box(bagr,-.62,.91,.48,.08,.15,.12,metal);box(bagr,.62,.91,.48,.08,.15,.12,metal);
-// cab structure with separate dark blue glass panels and thick yellow pillars
-const cab=new THREE.Group();cab.position.set(-.34,1.12,-.28);bagr.add(cab);
-// Open cabin interior: no solid block behind the windows, so the player can see out.
-box(cab,0,.30,0,.78,.12,.78,yellowDark); // lower cabin sill only
-// glazing on front/back/sides, slightly inset from the frame
-box(cab,0,.57,.493,.65,.58,.018,glass);box(cab,0,.57,-.493,.65,.58,.018,glass);
-box(cab,-.448,.57,0,.018,.58,.72,glass);box(cab,.448,.57,0,.018,.58,.72,glass);
-// glass highlights, pillars and roof
-box(cab,0,.89,0,.94,.12,1.02,yellow);box(cab,0,.24,0,.94,.12,1.02,yellowDark);
-for(let x of [-.43,.43])for(let z of [-.47,.47])box(cab,x,.57,z,.065,.72,.065,yellow);
-box(cab,0,.58,.51,.7,.045,.035,yellow);box(cab,0,.58,-.51,.7,.045,.035,yellow);
-box(cab,.02,.17,.18,.32,.04,.28,steelDark); // seat silhouette
-// front work lights and red rear lamps
-for(let x of [-.48,.48]){part(bagr,new THREE.BoxGeometry(.16,.1,.06),lamp,x,.98,.88);part(bagr,new THREE.BoxGeometry(.09,.09,.04),redLamp,x,1.0,-.9);}
-// Heavy articulated boom with proper pin joints and hydraulic cylinders, forward (+Z)
-const boomBase=new THREE.Group();boomBase.position.set(.3,1.0,.47);bagr.add(boomBase);
-part(boomBase,new THREE.CylinderGeometry(.22,.24,.22,12),steelDark,0,0,0,Math.PI/2,0,0);
-beam(boomBase,[-.02,.02,0],[-.04,.55,.52],.17,.13,yellow);
-beam(boomBase,[-.04,.55,.52],[-.03,.57,2.12],.145,.105,yellow);
-// dark steel linkage and hydraulic ram cylinders
+// Upper deck
+box(bagr,0,.91,.05,1.62,.42,1.72,yellow);
+box(bagr,0,1.08,-.61,1.42,.38,.55,yellowDark);
+box(bagr,0,1.20,-.72,1.24,.2,.5,yellow);
+
+for(let i=0;i<5;i++){
+ box(bagr,-.47+i*.23,.94,-.895,.12,.18,.025,steelDark);
+}
+
+// Cabin
+const cab=new THREE.Group();
+cab.position.set(-.34,1.12,-.28);
+bagr.add(cab);
+
+box(cab,0,.30,0,.78,.12,.78,yellowDark);
+box(cab,0,.57,.493,.65,.58,.018,glass);
+box(cab,0,.57,-.493,.65,.58,.018,glass);
+box(cab,-.448,.57,0,.018,.58,.72,glass);
+box(cab,.448,.57,0,.018,.58,.72,glass);
+box(cab,0,.89,0,.94,.12,1.02,yellow);
+box(cab,0,.24,0,.94,.12,1.02,yellowDark);
+
+for(const x of [-.43,.43]){
+ for(const z of [-.47,.47]){
+  box(cab,x,.57,z,.065,.72,.065,yellow);
+ }
+}
+box(cab,0,.58,.51,.7,.045,.035,yellow);
+box(cab,0,.58,-.51,.7,.045,.035,yellow);
+
+// Operator seat and dashboard
+box(cab,0,.39,-.10,.36,.36,.34,steelDark);
+box(cab,0,.64,-.02,.38,.08,.26,steelDark);
+box(cab,0,.39,.31,.64,.13,.15,steelDark);
+box(cab,0,.47,.31,.52,.018,.1,metal);
+
+// Work lights
+for(const x of [-.48,.48]){
+ box(bagr,x,.98,.88,.16,.1,.06,lamp);
+ box(bagr,x,1,-.9,.09,.09,.04,redLamp);
+}
+
+// Boom pivot: separate group so it can move
+const boomBase=new THREE.Group();
+boomBase.position.set(.3,1.0,.47);
+bagr.add(boomBase);
+
+cylinder(boomBase,.22,.24,.22,steelDark,0,0,0,Math.PI/2);
+
+const lowerBoom=beam(
+ boomBase,[-.02,.02,0],[-.04,.55,.52],.17,.13,yellow
+);
+const upperBoom=beam(
+ boomBase,[-.04,.55,.52],[-.03,.57,2.12],.145,.105,yellow
+);
+
+// Hydraulic rods
 beam(boomBase,[.18,.13,.13],[.18,.53,.62],.055,.05,steelDark);
 beam(boomBase,[.18,.53,.62],[.18,.55,2.02],.05,.045,metal);
 beam(boomBase,[-.19,.12,.18],[-.19,.5,.57],.075,.065,metal);
 beam(boomBase,[-.19,.5,.57],[-.19,.55,1.94],.035,.035,steelDark);
-// joints / pivot pins
-for(const p of [[0,.1,.12],[0,.55,.53],[0,.57,2.09]]){part(boomBase,new THREE.CylinderGeometry(.105,.105,.34,12),steelDark,p[0],p[1],p[2],0,0,Math.PI/2);part(boomBase,new THREE.CylinderGeometry(.052,.052,.355,12),metal,p[0],p[1],p[2],0,0,Math.PI/2);}
-// curved steel digging bucket, mouth facing down-forward, with five visible teeth
-const bucket=new THREE.Group();bucket.position.set(0,.34,2.25);bucket.rotation.x=-.22;boomBase.add(bucket);
-box(bucket,0,0,0,.48,.12,.34,bucketMat,-.2,0,0);box(bucket,0,-.12,.12,.46,.2,.12,bucketMat,-.5,0,0);
-for(let x of [-.22,-.11,0,.11,.22]){beam(bucket,[x,-.16,.12],[x,-.25,.27],.035,.012,steelDark);}
-for(let x of [-.19,-.095,0,.095,.19])part(bucket,new THREE.ConeGeometry(.035,.12,5),metal,x,-.24,.29,Math.PI/2,0,0);
-// warning stripes on boom and realistic side access panels
-for(let i=0;i<4;i++)box(boomBase,.14,.25+i*.08,.28+i*.13,.025,.045,.07,steelDark,0,0,-.5);
-box(bagr,.68,.83,-.15,.025,.22,.48,yellowDark);box(bagr,.695,.83,-.15,.02,.11,.36,steelDark);
-let seated=false;const vehicleBtn=document.getElementById('vehicleBtn'),vehicleStatus=document.getElementById('vehicleStatus');
-function toggleBagr(){if(!seated){seated=true; yaw=bagr.rotation.y+Math.PI; vehicleBtn.textContent='🚶 ВЫЛЕЗТИ ИЗ БАГРА';vehicleStatus.style.display='block';}else{seated=false;vehicleBtn.textContent='🚜 СЕСТЬ В БАГР';vehicleStatus.style.display='none';camera.position.set(bagr.position.x+2,1.75,bagr.position.z+2.8);}}
-vehicleBtn.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();toggleBagr()});addEventListener('keydown',e=>{if(e.key.toLowerCase()==='f')toggleBagr()});
-let lastFrame=0;function animate(now=0){requestAnimationFrame(animate);if(now-lastFrame<1000/60-1)return;lastFrame=now;let speed=keys.shift?0.22:.11;let f=Math.max(-1,Math.min(1,(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0)-joyY));let side=Math.max(-1,Math.min(1,(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0)+joyX));
-if(seated){bagr.rotation.y=yaw-Math.PI;const drive=keys.shift?.105:.055;bagr.position.x+=-Math.sin(yaw)*f*drive+Math.cos(yaw)*side*drive;bagr.position.z+=-Math.cos(yaw)*f*drive-Math.sin(yaw)*side*drive;camera.position.set(bagr.position.x-Math.sin(yaw)*.5,2.25,bagr.position.z-Math.cos(yaw)*.5);vehicleBtn.style.display='block';}
-else{camera.position.x+=-Math.sin(yaw)*f*speed+Math.cos(yaw)*side*speed;camera.position.z+=-Math.cos(yaw)*f*speed-Math.sin(yaw)*side*speed;camera.position.x=Math.max(-20,Math.min(20,camera.position.x));camera.position.y=1.75;const dist=Math.hypot(camera.position.x-bagr.position.x,camera.position.z-bagr.position.z);vehicleBtn.style.display=dist<5.5?'block':'none';}
-if(keys.q)yaw+=.025;if(keys.e)yaw-=.025;updateLook();renderer.render(scene,camera)}animate();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+
+for(const p of [[0,.1,.12],[0,.55,.53],[0,.57,2.09]]){
+ cylinder(boomBase,.105,.105,.34,steelDark,p[0],p[1],p[2],Math.PI/2);
+ cylinder(boomBase,.052,.052,.355,metal,p[0],p[1],p[2],Math.PI/2);
+}
+
+// Bucket has its own pivot and can rotate
+const bucketPivot=new THREE.Group();
+bucketPivot.position.set(0,.34,2.25);
+boomBase.add(bucketPivot);
+
+const bucket=new THREE.Group();
+bucketPivot.add(bucket);
+bucket.rotation.x=-.22;
+
+box(bucket,0,0,0,.48,.12,.34,bucketMat);
+box(bucket,0,-.12,.12,.46,.2,.12,bucketMat);
+
+for(const x of [-.22,-.11,0,.11,.22]){
+ beam(bucket,[x,-.16,.12],[x,-.25,.27],.035,.012,steelDark);
+ const tooth=new THREE.Mesh(
+  new THREE.ConeGeometry(.035,.12,5),metal
+ );
+ tooth.position.set(x,-.24,.29);
+ tooth.rotation.x=Math.PI/2;
+ bucket.add(tooth);
+}
+
+// Side panels
+box(bagr,.68,.83,-.15,.025,.22,.48,yellowDark);
+box(bagr,.695,.83,-.15,.02,.11,.36,steelDark);
+
+// Input state
+let seated=false;
+let yaw=0,pitch=0;
+const keys={};
+let joyX=0,joyY=0,joyId=null,lookId=null;
+let lastLookX=0,lastLookY=0;
+
+const status=document.getElementById('status');
+const enter=document.getElementById('enter');
+const armControls=document.getElementById('armControls');
+const stick=document.getElementById('stick');
+const knob=document.getElementById('knob');
+
+function updateLook(){
+ camera.rotation.set(pitch,yaw,0,'YXZ');
+}
+function toggleBagr(){
+ if(!seated){
+  const dist=Math.hypot(
+   camera.position.x-bagr.position.x,
+   camera.position.z-bagr.position.z
+  );
+  if(dist>7){
+   status.textContent='Подойди ближе к экскаватору';
+   return;
+  }
+  seated=true;
+  yaw=bagr.rotation.y+Math.PI;
+  pitch=0;
+  status.textContent='В КАБИНЕ · управляй стрелой';
+  enter.textContent='🚶 ВЫЙТИ ИЗ КАБИНЫ';
+  armControls.style.display='flex';
+ }else{
+  seated=false;
+  status.textContent='Пешком · найди экскаватор';
+  enter.textContent='🚜 СЕСТЬ В ЭКСКАВАТОР';
+  armControls.style.display='none';
+  camera.position.set(bagr.position.x+2,1.75,bagr.position.z+2.8);
+ }
+}
+enter.addEventListener('pointerdown',e=>{
+ e.preventDefault();
+ e.stopPropagation();
+ toggleBagr();
+});
+
+addEventListener('keydown',e=>{
+ keys[e.key.toLowerCase()]=true;
+ if(e.key.toLowerCase()==='f')toggleBagr();
+});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+function bindHold(id,key){
+ const el=document.getElementById(id);
+ el.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  e.stopPropagation();
+  keys[key]=true;
+  try{el.setPointerCapture(e.pointerId)}catch(_){}
+ });
+ for(const ev of ['pointerup','pointercancel','lostpointercapture']){
+  el.addEventListener(ev,()=>keys[key]=false);
+ }
+}
+bindHold('armUp','armup');
+bindHold('armDown','armdown');
+bindHold('bucketOpen','bucketopen');
+bindHold('bucketClose','bucketclose');
+bindHold('boomLeft','boomleft');
+bindHold('boomRight','boomright');
+
+// Virtual joystick
+const radius=40;
+function moveStick(e){
+ const r=stick.getBoundingClientRect();
+ let dx=e.clientX-(r.left+r.width/2);
+ let dy=e.clientY-(r.top+r.height/2);
+ const len=Math.hypot(dx,dy);
+ if(len>radius){dx=dx/len*radius;dy=dy/len*radius}
+ joyX=dx/radius;
+ joyY=dy/radius;
+ knob.style.transform=`translate(${dx}px,${dy}px)`;
+}
+function resetStick(){
+ joyId=null;joyX=0;joyY=0;
+ knob.style.transform='translate(0px,0px)';
+}
+stick.addEventListener('pointerdown',e=>{
+ e.preventDefault();e.stopPropagation();
+ joyId=e.pointerId;
+ stick.setPointerCapture(e.pointerId);
+ moveStick(e);
+});
+stick.addEventListener('pointermove',e=>{
+ if(e.pointerId===joyId)moveStick(e);
+});
+for(const ev of ['pointerup','pointercancel','lostpointercapture']){
+ stick.addEventListener(ev,e=>{
+  if(e.pointerId===joyId)resetStick();
+ });
+}
+
+// Drag on the 3D screen to look around
+renderer.domElement.addEventListener('pointerdown',e=>{
+ if(e.clientX>innerWidth*.38){
+  lookId=e.pointerId;
+  lastLookX=e.clientX;
+  lastLookY=e.clientY;
+  renderer.domElement.setPointerCapture(e.pointerId);
+ }
+});
+renderer.domElement.addEventListener('pointermove',e=>{
+ if(e.pointerId===lookId){
+  yaw-=(e.clientX-lastLookX)*.0045;
+  pitch-=(e.clientY-lastLookY)*.0035;
+  pitch=Math.max(-1.05,Math.min(1.05,pitch));
+  lastLookX=e.clientX;
+  lastLookY=e.clientY;
+  updateLook();
+ }
+});
+for(const ev of ['pointerup','pointercancel','lostpointercapture']){
+ renderer.domElement.addEventListener(ev,e=>{
+  if(e.pointerId===lookId)lookId=null;
+ });
+}
+
+// Cabin camera: local coordinates match the seat and front glass
+const localCockpit=new THREE.Vector3(-.34,1.12+.57,-.28+.12);
+const worldOffset=new THREE.Vector3();
+
+function updateCabinCamera(){
+ worldOffset.copy(localCockpit).multiplyScalar(bagr.scale);
+ worldOffset.applyAxisAngle(
+  new THREE.Vector3(0,1,0),bagr.rotation.y
+ );
+ camera.position.copy(bagr.position).add(worldOffset);
+}
+
+let previous=0;
+function animate(now=0){
+ requestAnimationFrame(animate);
+ if(now-previous<1000/60)return;
+ previous=now;
+
+ const f=Math.max(-1,Math.min(1,
+  (keys.w||keys.arrowup?1:0)-
+  (keys.s||keys.arrowdown?1:0)-joyY
+ ));
+ const side=Math.max(-1,Math.min(1,
+  (keys.d||keys.arrowright?1:0)-
+  (keys.a||keys.arrowleft?1:0)+joyX
+ ));
+
+ if(seated){
+  // Drive the excavator along the railway
+  const drive=keys.shift?.105:.055;
+  bagr.position.x+=
+   -Math.sin(yaw)*f*drive+
+   Math.cos(yaw)*side*drive;
+  bagr.position.z+=
+   -Math.cos(yaw)*f*drive-
+   Math.sin(yaw)*side*drive;
+
+  bagr.position.x=Math.max(-15,Math.min(15,bagr.position.x));
+
+  // The cabin follows the vehicle while the operator looks around
+  bagr.rotation.y=yaw-Math.PI;
+  updateCabinCamera();
+
+  // Articulated boom controls
+  if(keys.armup)boomBase.rotation.x=Math.max(-.55,boomBase.rotation.x-.012);
+  if(keys.armdown)boomBase.rotation.x=Math.min(.75,boomBase.rotation.x+.012);
+
+  // Bucket curl
+  if(keys.bucketopen)bucketPivot.rotation.x=Math.min(.85,bucketPivot.rotation.x+.018);
+  if(keys.bucketclose)bucketPivot.rotation.x=Math.max(-.85,bucketPivot.rotation.x-.018);
+
+  // Turn boom left/right
+  if(keys.boomleft)boomBase.rotation.y=Math.max(-.8,boomBase.rotation.y-.012);
+  if(keys.boomright)boomBase.rotation.y=Math.min(.8,boomBase.rotation.y+.012);
+
+ }else{
+  camera.position.x+=-Math.sin(yaw)*f*.11+Math.cos(yaw)*side*.11;
+  camera.position.z+=-Math.cos(yaw)*f*.11-Math.sin(yaw)*side*.11;
+  camera.position.x=Math.max(-20,Math.min(20,camera.position.x));
+  camera.position.y=1.75;
+
+  const dist=Math.hypot(
+   camera.position.x-bagr.position.x,
+   camera.position.z-bagr.position.z
+  );
+  enter.style.display=dist<7?'block':'block';
+  enter.style.opacity=dist<7?'1':'.65';
+ }
+
+ updateLook();
+ renderer.render(scene,camera);
+}
+updateLook();
+animate();
+
+addEventListener('resize',()=>{
+ camera.aspect=innerWidth/innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight);
+});
 })();
-</script></body></html>
+</script>
+</body>
+</html>
