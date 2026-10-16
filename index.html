@@ -113,7 +113,7 @@ beam(bucket,[-.18,0,0],[-.18,-.28,.25],.04,steel);
 beam(bucket,[.18,0,0],[.18,-.28,.25],.04,steel);
 camera.position.set(0,1.35,-.55);
 cab.add(camera);
-let yaw=0,pitch=-.06,joyX=0,joyY=0;
+let yaw=Math.PI,pitch=-.06,joyX=0,joyY=0;
 let boomAngle=0,bucketAngle=0;
 const joy=document.getElementById('joy'),knob=document.getElementById('knob');
 function setJoy(e){
