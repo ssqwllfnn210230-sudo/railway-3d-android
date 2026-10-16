@@ -3,128 +3,176 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Railway 3D</title>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8dc7e8;font-family:Arial,sans-serif;touch-action:none}
-canvas{display:block;width:100%;height:100%}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#91cbe9;font-family:Arial,sans-serif;touch-action:none}
+canvas{display:block}
 #hud{position:fixed;inset:0;pointer-events:none;color:white;text-shadow:0 2px 4px #000;font-weight:bold}
-#title{position:absolute;top:12px;left:12px;background:#111b;padding:9px 12px;border-radius:9px}
-#hint{position:absolute;top:58px;left:12px;font-size:12px;background:#1119;padding:7px;border-radius:7px}
-#joy{position:absolute;left:22px;bottom:25px;width:124px;height:124px;border-radius:50%;background:#ffffff35;border:2px solid #ffffff9a;pointer-events:auto;touch-action:none}
-#knob{position:absolute;width:48px;height:48px;left:36px;top:36px;border-radius:50%;background:#ffffffb8;border:2px solid white}
-#buttons{position:absolute;right:12px;bottom:20px;display:flex;flex-direction:column;gap:9px;pointer-events:auto}
-button{background:#171c22dd;color:white;border:1px solid #ffffff8a;border-radius:12px;padding:13px 15px;font-weight:bold;font-size:13px;min-width:118px;touch-action:none}
-#look{position:absolute;right:12px;top:12px;font-size:12px;background:#1119;padding:9px;border-radius:8px}
+#title,#hint,#look{position:absolute;background:#111b;border-radius:9px;padding:9px}
+#title{top:12px;left:12px}
+#hint{top:56px;left:12px;font-size:12px}
+#look{top:12px;right:12px;font-size:11px}
+#joy{position:absolute;left:18px;bottom:22px;width:124px;height:124px;border-radius:50%;background:#ffffff35;border:2px solid #ffffff9a;pointer-events:auto}
+#knob{position:absolute;width:48px;height:48px;left:36px;top:36px;border-radius:50%;background:#ffffffc9;border:2px solid white}
+#buttons{position:absolute;right:10px;bottom:16px;display:flex;flex-direction:column;gap:7px;pointer-events:auto}
+button{background:#171c22e8;color:white;border:1px solid #ffffff8a;border-radius:11px;padding:12px 10px;font-weight:bold;font-size:12px;min-width:112px;touch-action:none}
 </style>
 </head>
 <body>
 <div id="hud">
-  <div id="title">🚂 RAILWAY 3D</div>
-  <div id="hint">Джойстик — движение<br>Веди пальцем справа — обзор</div>
-  <div id="look">КАБИНА ЭКСКАВАТОРА</div>
-  <div id="joy"><div id="knob"></div></div>
-  <div id="buttons">
-    <button id="up">⬆ Поднять стрелу</button>
-    <button id="down">⬇ Опустить стрелу</button>
-    <button id="open">🪣 Открыть ковш</button>
-    <button id="close">🪣 Закрыть ковш</button>
-  </div>
+<div id="title">🚂 RAILWAY 3D</div>
+<div id="hint">Джойстик — движение<br>Веди пальцем по экрану — обзор</div>
+<div id="look">КАБИНА ЭКСКАВАТОРА</div>
+<div id="joy"><div id="knob"></div></div>
+<div id="buttons">
+<button id="up">⬆ Поднять стрелу</button>
+<button id="down">⬇ Опустить стрелу</button>
+<button id="open">🪣 Открыть ковш</button>
+<button id="close">🪣 Закрыть ковш</button>
+</div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script>
 (function(){
-if(!window.THREE){document.getElementById('hint').textContent='Нет подключения к 3D-библиотеке. Проверь интернет.';return;}
+const hint=document.getElementById('hint');
+if(!window.THREE){
+hint.textContent='Ошибка: не загрузилась 3D-библиотека. Проверь интернет.';
+return;
+}
+try{
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x91cbe9);
-scene.fog=new THREE.Fog(0x91cbe9,35,150);
+scene.fog=new THREE.Fog(0x91cbe9,45,160);
 const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,250);
 const renderer=new THREE.WebGLRenderer({antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
 renderer.setSize(innerWidth,innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
-document.body.appendChild(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xffffff,0x65704e,2));
-const sun=new THREE.DirectionalLight(0xffffff,2.2);sun.position.set(-15,30,12);scene.add(sun);
-const mat=(c,rough=.85)=>new THREE.MeshStandardMaterial({color:c,roughness:rough});
-const green=mat(0x527d3e),darkGreen=mat(0x28512d),gravel=mat(0x77766e),steel=mat(0x454b50,.45),railMat=mat(0x9ba3a8,.35),wood=mat(0x65513a),yellow=mat(0xf0b800),glass=new THREE.MeshStandardMaterial({color:0x70c6e8,metalness:.15,roughness:.15,transparent:true,opacity:.3}),black=mat(0x242629);
-function mesh(g,m,p,x=0,y=0,z=0){let o=new THREE.Mesh(g,m);o.position.set(x,y,z);p.add(o);return o}
-function box(p,x,y,z,sx,sy,sz,m){return mesh(new THREE.BoxGeometry(sx,sy,sz),m,p,x,y,z)}
-function cyl(p,x,y,z,r1,r2,h,m,rx=0,rz=0){let o=mesh(new THREE.CylinderGeometry(r1,r2,h,12),m,p,x,y,z);o.rotation.x=rx;o.rotation.z=rz;return o}
-box(scene,0,-.25,-45,100,.4,180,green);
-box(scene,0,-.02,-15,5,.2,145,gravel);
-for(let z=45;z>-105;z-=1.25)box(scene,0,.06,z,3.2,.14,.22,wood);
-for(let x of [-.95,.95])box(scene,x,.17,-15,.18,.22,150,railMat);
+document.body.insertBefore(renderer.domElement,document.body.firstChild);
+scene.add(new THREE.HemisphereLight(0xffffff,0x66704e,2));
+const sun=new THREE.DirectionalLight(0xffffff,2);
+sun.position.set(-15,30,12);scene.add(sun);
+const mat=c=>new THREE.MeshStandardMaterial({color:c,roughness:.8});
+const grass=mat(0x50783c),treeMat=mat(0x28512d),stone=mat(0x77766e),railMat=mat(0xb7bec2),sleeperMat=mat(0x59432e),yellow=mat(0xf0b800),black=mat(0x292d30),steel=mat(0x777f83);
+const glass=new THREE.MeshStandardMaterial({color:0x72cbea,transparent:true,opacity:.22,roughness:.15,side:THREE.DoubleSide});
+function box(p,x,y,z,sx,sy,sz,m){
+const o=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),m);
+o.position.set(x,y,z);p.add(o);return o;
+}
+function beam(p,a,b,r,m){
+const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b);
+const d=B.clone().sub(A);
+const o=new THREE.Mesh(new THREE.CylinderGeometry(r*.8,r,d.length(),10),m);
+o.position.copy(A.clone().add(B).multiplyScalar(.5));
+o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());
+p.add(o);return o;
+}
+box(scene,0,-.35,-35,100,.5,180,grass);
+box(scene,0,-.03,-20,4.5,.18,150,stone);
+for(let z=50;z>-110;z-=1.3)box(scene,0,.07,z,3.1,.14,.24,sleeperMat);
+for(const x of [-.95,.95])box(scene,x,.18,-20,.18,.22,155,railMat);
+const treeGeo=new THREE.ConeGeometry(1.4,4,7);
+const trunkGeo=new THREE.CylinderGeometry(.15,.23,1.7,7);
 for(let side of [-1,1]){
-for(let z=-100;z<40;z+=5){
-let tx=side*(8+Math.sin(z*.12)*2);
-cyl(scene,tx,1.5,z,.18,.28,3,darkGreen);
-mesh(new THREE.ConeGeometry(1.4,4,7),green,new THREE.Group(),tx,4,z);
-let tree=scene.children[scene.children.length-1];
-tree.position.set(tx,3.8,z);
+for(let z=-100;z<50;z+=5){
+let x=side*(7+Math.sin(z*.15)*2);
+let trunk=new THREE.Mesh(trunkGeo,mat(0x60472d));
+trunk.position.set(x,.8,z);scene.add(trunk);
+let crown=new THREE.Mesh(treeGeo,treeMat);
+crown.position.set(x,3.4,z);scene.add(crown);
 }
 }
 const cab=new THREE.Group();scene.add(cab);
-box(cab,0,1.05,0,2.25,.65,2.4,yellow);
-box(cab,0,1.48,-.1,1.95,.5,1.8,black);
-box(cab,0,1.53,.84,1.65,.42,.06,glass);
-box(cab,0,1.53,-.99,1.65,.42,.06,glass);
-box(cab,-.98,1.5,-.1,.06,.45,1.6,glass);
-box(cab,.98,1.5,-.1,.06,.45,1.6,glass);
-for(let x of [-.9,.9])for(let z of [-.8,.8]){
-cyl(cab,x,.38,z,.4,.4,.28,black,Math.PI/2);
-cyl(cab,x,.38,z,.19,.19,.3,steel,Math.PI/2);
+box(cab,0,1.0,0,2.2,.55,2.35,yellow);
+box(cab,0,1.4,-.1,1.9,.12,1.7,black);
+box(cab,0,1.42,.82,1.65,.5,.06,glass);
+box(cab,0,1.42,-.92,1.65,.5,.06,glass);
+box(cab,-.95,1.42,-.05,.06,.45,1.5,glass);
+box(cab,.95,1.42,-.05,.06,.45,1.5,glass);
+for(const x of [-.85,.85]){
+for(const z of [-.8,.8]){
+const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.38,.38,.25,16),black);
+wheel.rotation.z=Math.PI/2;wheel.position.set(x,.35,z);cab.add(wheel);
 }
-box(cab,0,.7,0,1.3,.12,1.4,black);
-const boomPivot=new THREE.Group();boomPivot.position.set(0,1.7,.7);cab.add(boomPivot);
-function beam(p,a,b,r,m){
-const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),d=B.clone().sub(A);
-const o=mesh(new THREE.CylinderGeometry(r*.7,r,d.length(),10),m,p);
-o.position.copy(A.add(B).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());return o;
 }
-const boomShape=new THREE.Group();boomPivot.add(boomShape);
-beam(boomShape,[0,0,0],[0,.3,1.15],.19,yellow);
-beam(boomShape,[0,.3,1.15],[0,-.08,2.1],.14,yellow);
-beam(boomShape,[0,.3,.65],[0,.52,1.45],.045,steel);
-const stick=new THREE.Group();stick.position.set(0,-.08,2.1);boomShape.add(stick);
-beam(stick,[0,0,0],[0,-.15,.85],.12,yellow);
-beam(stick,[0,.1,.1],[0,.25,.85],.035,steel);
-const bucket=new THREE.Group();bucket.position.set(0,-.15,.9);stick.add(bucket);
-mesh(new THREE.BoxGeometry(.42,.28,.38),steel,bucket,0,-.1,.1);
-for(let x of [-.19,.19])beam(bucket,[x,0,0],[x,-.28,.25],.045,steel);
-const seat=mesh(new THREE.BoxGeometry(.42,.12,.42),black,cab,0,.95,-.25);
-box(cab,0,1.2,-.52,.38,.55,.12,black);
-camera.position.set(0,1.48,-.45);cab.add(camera);
-let yaw=0,pitch=-.04,joyX=0,joyY=0,lookPointer=null,lastX=0,lastY=0;
+box(cab,0,.72,-.1,1.2,.1,1.2,black);
+box(cab,0,.96,-.55,.42,.55,.12,black);
+const boomPivot=new THREE.Group();
+boomPivot.position.set(0,1.35,.55);cab.add(boomPivot);
+beam(boomPivot,[0,0,0],[0,.22,1.15],.18,yellow);
+beam(boomPivot,[0,.22,1.15],[0,-.1,2.05],.14,yellow);
+beam(boomPivot,[0,.12,.55],[0,.4,1.5],.045,steel);
+const stick=new THREE.Group();stick.position.set(0,-.1,2.05);boomPivot.add(stick);
+beam(stick,[0,0,0],[0,-.18,.85],.12,yellow);
+beam(stick,[0,.1,.05],[0,.22,.78],.04,steel);
+const bucket=new THREE.Group();bucket.position.set(0,-.18,.83);stick.add(bucket);
+box(bucket,0,-.12,.12,.42,.26,.38,steel);
+beam(bucket,[-.18,0,0],[-.18,-.28,.25],.04,steel);
+beam(bucket,[.18,0,0],[.18,-.28,.25],.04,steel);
+camera.position.set(0,1.35,-.55);
+cab.add(camera);
+let yaw=0,pitch=-.06,joyX=0,joyY=0;
 let boomAngle=0,bucketAngle=0;
-function hold(id,fn){const b=document.getElementById(id);let timer=null;const start=e=>{e.preventDefault();fn(true);timer=setInterval(()=>fn(true),45)};const stop=()=>{if(timer)clearInterval(timer);timer=null;fn(false)};b.addEventListener('pointerdown',start);['pointerup','pointercancel','pointerleave'].forEach(e=>b.addEventListener(e,stop));}
-hold('up',v=>{if(v)boomAngle=Math.min(.8,boomAngle+.025)});
-hold('down',v=>{if(v)boomAngle=Math.max(-.65,boomAngle-.025)});
-hold('open',v=>{if(v)bucketAngle=Math.min(.9,bucketAngle+.035)});
-hold('close',v=>{if(v)bucketAngle=Math.max(-.7,bucketAngle-.035)});
 const joy=document.getElementById('joy'),knob=document.getElementById('knob');
-function setJoy(e){const r=joy.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),len=Math.hypot(dx,dy),max=39,k=Math.min(1,max/Math.max(1,len));joyX=dx*k/max;joyY=dy*k/max;knob.style.left=(36+joyX*39)+'px';knob.style.top=(36+joyY*39)+'px'}
+function setJoy(e){
+const r=joy.getBoundingClientRect();
+const dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);
+const len=Math.hypot(dx,dy),k=Math.min(1,39/Math.max(1,len));
+joyX=dx*k/39;joyY=dy*k/39;
+knob.style.left=(36+joyX*39)+'px';knob.style.top=(36+joyY*39)+'px';
+}
 joy.addEventListener('pointerdown',e=>{joy.setPointerCapture(e.pointerId);setJoy(e)});
 joy.addEventListener('pointermove',e=>{if(e.buttons)setJoy(e)});
 function resetJoy(){joyX=0;joyY=0;knob.style.left='36px';knob.style.top='36px'}
-joy.addEventListener('pointerup',resetJoy);joy.addEventListener('pointercancel',resetJoy);
-renderer.domElement.addEventListener('pointerdown',e=>{if(e.clientX<innerWidth*.58)return;lookPointer=e.pointerId;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});
-renderer.domElement.addEventListener('pointermove',e=>{if(lookPointer!==e.pointerId)return;yaw-=(e.clientX-lastX)*.006;pitch=Math.max(-.6,Math.min(.55,pitch-(e.clientY-lastY)*.004));lastX=e.clientX;lastY=e.clientY});
+joy.addEventListener('pointerup',resetJoy);
+joy.addEventListener('pointercancel',resetJoy);
+function hold(id,fn){
+const b=document.getElementById(id);let timer;
+const start=e=>{e.preventDefault();if(timer)return;fn();timer=setInterval(fn,50)};
+const stop=()=>{clearInterval(timer);timer=null};
+b.addEventListener('pointerdown',start);
+['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,stop));
+}
+hold('up',()=>boomAngle=Math.min(.8,boomAngle+.025));
+hold('down',()=>boomAngle=Math.max(-.65,boomAngle-.025));
+hold('open',()=>bucketAngle=Math.min(.9,bucketAngle+.035));
+hold('close',()=>bucketAngle=Math.max(-.7,bucketAngle-.035));
+let lookId=null,lastX=0,lastY=0;
+renderer.domElement.addEventListener('pointerdown',e=>{
+if(e.clientX<innerWidth*.35||e.clientX>innerWidth*.72)return;
+lookId=e.pointerId;lastX=e.clientX;lastY=e.clientY;
+renderer.domElement.setPointerCapture(e.pointerId);
+});
+renderer.domElement.addEventListener('pointermove',e=>{
+if(lookId!==e.pointerId)return;
+yaw-=(e.clientX-lastX)*.006;
+pitch=Math.max(-.65,Math.min(.5,pitch-(e.clientY-lastY)*.004));
+lastX=e.clientX;lastY=e.clientY;
+});
+renderer.domElement.addEventListener('pointerup',e=>{if(lookId===e.pointerId)lookId=null});
 function frame(){
 requestAnimationFrame(frame);
 cab.rotation.y-=joyX*.018;
-cab.position.x+=Math.sin(cab.rotation.y)*(-joyY)*.06;
+cab.position.x=Math.max(-4,Math.min(4,cab.position.x+Math.sin(cab.rotation.y)*(-joyY)*.06));
 cab.position.z+=Math.cos(cab.rotation.y)*(-joyY)*.06;
-cab.position.x=Math.max(-4,Math.min(4,cab.position.x));
 boomPivot.rotation.x=boomAngle;
-stick.rotation.x=bucketAngle*.55;
+stick.rotation.x=bucketAngle*.5;
 bucket.rotation.x=bucketAngle;
-camera.rotation.set(pitch,yaw,0,'YXZ');
+camera.rotation.order='YXZ';
+camera.rotation.set(pitch,yaw,0);
 renderer.render(scene,camera);
 }
 frame();
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+addEventListener('resize',()=>{
+camera.aspect=innerWidth/innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(innerWidth,innerHeight);
+});
+}catch(err){
+hint.textContent='Ошибка 3D: '+err.message;
+}
 })();
 </script>
 </body>
